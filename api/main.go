@@ -1,8 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"io"
+	"net/http"
 )
 
 type Source string
@@ -31,52 +32,38 @@ type Article struct {
 }
 
 func main() {
-	articles := []Article{
-		{
-			Title:       "Test Onet",
-			Source:      "Onet.pla",
-			Category:    CatSport,
-			Link:        "www.onet.pl",
-			Description: "test news onet",
-		},
-		{
-			Title:       "Test Wp",
-			Source:      "Wp.pl",
-			Category:    CatInfo,
-			Link:        "www.wp.pl",
-			Description: "test news wp",
-		},
-		{
-			Title:       "Test o2",
-			Source:      "o2.pl",
-			Category:    CatGossip,
-			Link:        "www.02.pl",
-			Description: "test news o2",
-		},
-		{
-			Title:       "Test gazeta",
-			Source:      "gazeta.pl",
-			Category:    CatMoto,
-			Link:        "www.gazeta.pl",
-			Description: "test news gazeta",
-		},
-	}
-
-	found, err := findArticleByTitle(articles, "Test Onet")
+	url := "https://www.onet.pl/"
+	result, err := fetch(url)
 
 	if err != nil {
-		fmt.Println("Error:", err)
-	} else {
-		fmt.Println("Found:", found.Title)
+		fmt.Println("Error during fetch data", err)
+		return
 	}
+
+	fmt.Println("HTML starts with:")
+	fmt.Println(string(result)[:500])
 }
 
-func findArticleByTitle(articles []Article, title string) (Article, error) {
-	for _, a := range articles {
-		if a.Title == title {
-			return a, nil
-		}
+func fetch(url string) (string, error) {
+	resp, err := http.Get(url)
+
+	if err != nil {
+		return "", fmt.Errorf("Connection error: %s", resp.Status)
 	}
 
-	return Article{}, errors.New("no article found")
+	defer resp.Body.Close()
+
+	fmt.Println("Response code", resp.Status)
+
+	if resp.StatusCode == http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+
+		if err != nil {
+			return "", fmt.Errorf("Response read error: %s", resp.Status)
+		}
+
+		return string(body), nil
+	}
+
+	return "", fmt.Errorf("Fetch error: %s", err)
 }
